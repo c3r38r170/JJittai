@@ -14,12 +14,6 @@
 			"type": "shell",
 			"command": "mvn clean package assembly:single -e",
 			"group": "build"
-		},
-		{
-			"label": "test",
-			"type": "shell",
-			"command": "mvn -B test",
-			"group": "test"
 		}
 	]
 }

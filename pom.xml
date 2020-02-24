@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>c3r38r170</groupId>
+    <artifactId>Jjittai</artifactId>
+    <version>1</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+
+    	<dependency>
+    		<groupId>net.java.dev.jna</groupId>
+    		<artifactId>jna-platform</artifactId>
+    		<version>5.5.0</version>
+    	</dependency>
+
+
+    	<dependency>
+    		<groupId>net.java.dev.jna</groupId>
+    		<artifactId>jna</artifactId>
+    		<version>5.5.0</version>
+    	</dependency>
+
+
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>org.json</artifactId>
+			<version>chargebee-1.0</version>
+		</dependency>
+
+    </dependencies>
+    <build>
+        <plugins>
+						<plugin>
+							<artifactId>maven-assembly-plugin</artifactId>
+							<configuration>
+								<appendAssemblyId>false</appendAssemblyId>
+								<archive>
+									<manifest>
+										<mainClass>c3r38r170.Jjittai</mainClass>
+									</manifest>
+								</archive>
+								<descriptorRefs>
+									<descriptorRef>jar-with-dependencies</descriptorRef>
+								</descriptorRefs>
+							</configuration>
+						</plugin>
+				</plugins>
+				<!--<resources>
+					<resource>
+						<directory>src/main/java/c3r38r170</directory>
+						<includes>
+							<include>worker.png</include>
+						</includes>
+					</resource>
+				</resources>-->
+    </build>
+</project>

@@ -14,13 +14,13 @@ The JSON structure is as follows:
 {
 	//mandatory properties
 	"name":"Example"//cannot be empty
-  ,"sprites":[//at least one
+ 	,"sprites":[//at least one
 		{
 			"file":"file.png" //mandatory
 			,"x":0 //optional DEFAULT: 0
-      ,"y":0 //optional DEFAULT: 0
-      ,"width":10 //optional DEFAULT: the image width
-      ,"height":10 //optional DEFAULT: the image height
+     			,"y":0 //optional DEFAULT: 0
+     			,"width":10 //optional DEFAULT: the image width
+			,"height":10 //optional DEFAULT: the image height
 		}
 	]
 	,"idleCycle":[ //array of animation steps
@@ -31,20 +31,20 @@ The JSON structure is as follows:
 	]
   
 	//optional properties
-  ,"speed":10 //optional DEFAULT: 10pix/second
+	,"speed":10 //optional DEFAULT: 10pix/second
 	,"canBeClicked":false //optional DEFAULT: false, true only works on Windows and having multiple jittais
 	,"behaviour":1 /*
-      optional DEFAULT: 4
+			optional DEFAULT: 4
 			1:totally idle, doesn't walk but displays events
-      4:chill around, like totally idle but walks			
+			4:chill around, like totally idle but walks			
 
-      future implementation:
-      2:chase pointer,
+			future implementation:
+			2:chase pointer,
 			3:whimsical, just like current Aneko, it should start walking in a random direction every click or keypress 
 			annoy, it would prefer critical screen places
 	*/
 	,"walkingCycle":[ //array of arrays of animation steps
-  //if its behaviour is not chill around, you need at least 4 cycles
+	//if its behaviour is not chill around, you need at least 4 cycles
 		[
 			{
 				"duration":0.1

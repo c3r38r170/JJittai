@@ -207,7 +207,7 @@ class Jjittai extends JWindow {
 		// optional
 		finalSpeed = jittai.optInt("speed", 10);
 		acceleration = jittai.optInt("acceleration", 10);
-		canBeClicked = behaviour == Behaviour.TOTALLY_IDLE ? true : jittai.optBoolean("canBeClicked", false);
+		canBeClicked = behaviour == Behaviour.TOTALLY_IDLE ? true : jittai.optBoolean("canBeClicked", true);
 		JSONArray sounds = jittai.optJSONArray("sounds");
 		if (sounds != null)
 			for (int i = 0, len = sounds.length(); i < len; i++)

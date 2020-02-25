@@ -14,25 +14,26 @@
 
     <dependencies>
 
-    	<dependency>
-    		<groupId>net.java.dev.jna</groupId>
-    		<artifactId>jna-platform</artifactId>
-    		<version>5.5.0</version>
-    	</dependency>
-
-
-    	<dependency>
-    		<groupId>net.java.dev.jna</groupId>
-    		<artifactId>jna</artifactId>
-    		<version>5.5.0</version>
-    	</dependency>
-
-
-		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>org.json</artifactId>
-			<version>chargebee-1.0</version>
-		</dependency>
+			<dependency>
+				<groupId>com.1stleg</groupId>
+				<artifactId>jnativehook</artifactId>
+				<version>2.1.0</version>
+			</dependency>
+			<dependency>
+				<groupId>net.java.dev.jna</groupId>
+				<artifactId>jna-platform</artifactId>
+				<version>5.5.0</version>
+			</dependency>
+			<dependency>
+				<groupId>net.java.dev.jna</groupId>
+				<artifactId>jna</artifactId>
+				<version>5.5.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.json</groupId>
+				<artifactId>org.json</artifactId>
+				<version>chargebee-1.0</version>
+			</dependency>
 
     </dependencies>
     <build>
@@ -52,13 +53,5 @@
 							</configuration>
 						</plugin>
 				</plugins>
-				<!--<resources>
-					<resource>
-						<directory>src/main/java/c3r38r170</directory>
-						<includes>
-							<include>worker.png</include>
-						</includes>
-					</resource>
-				</resources>-->
     </build>
 </project>

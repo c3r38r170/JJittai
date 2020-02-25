@@ -7,20 +7,23 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.util.LinkedList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import java.awt.image.BufferedImage;
 import java.awt.Point;
 import java.awt.Toolkit;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Component;
+import java.awt.MouseInfo;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.awt.Component;
 
 import javax.imageio.ImageIO;
 import javax.swing.JLabel;
@@ -33,6 +36,12 @@ import javax.swing.ImageIcon;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 
+import org.jnativehook.GlobalScreen;
+import org.jnativehook.NativeHookException;
+import org.jnativehook.keyboard.NativeKeyEvent;
+import org.jnativehook.keyboard.NativeKeyListener;
+import org.jnativehook.mouse.NativeMouseEvent;
+import org.jnativehook.mouse.NativeMouseListener;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -61,12 +70,12 @@ class Jjittai extends JWindow {
 	private double currentSpeed;
 	private double currentAngle;
 	private Point destination;
-	private boolean stopped = true;
+	private boolean stopped;
 	private int[] usedWnH = new int[2];
-
+	private boolean isAlreadyInvisible=false;
 	private BufferedImage currentImage;
 	private double[] coordenates = { 0, 0 };
-	static private Dimension screenSize;
+	static private Dimension screenSize=Toolkit.getDefaultToolkit().getScreenSize();;
 	private int height, width;
 	private LinkedList<AnimationStep> currentWalkingAnimation;
 	private long miliseconds = 0;
@@ -81,7 +90,6 @@ class Jjittai extends JWindow {
 	private boolean initializeWithMenu;
 
 	public static void main(String[] args) {
-		screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 		File dir = new File(".");
 		File[] filesList = dir.listFiles(new FileFilter() {
 			@Override
@@ -108,11 +116,10 @@ class Jjittai extends JWindow {
 		}
 		if (Jjittais.size() == 0){
 			JOptionPane.showMessageDialog(null, "No se ha encontrado ningún Jjittai.", "Lo sentimos.", JOptionPane.INFORMATION_MESSAGE);
-			System.exit(0);// avisar antes JFrame+DISPOSE_ON_CLOSE || JOptionPane advertencia
-		}else if (Jjittais.size() == 1&&!Jjittais.get(0).initializeWithMenu){
-			//if(!canBeClicked)canBeClicked=true;
+			System.exit(0);
+		}else if (Jjittais.size() == 1&&!Jjittais.get(0).initializeWithMenu)
 			Jjittais.get(0).summon();
-		}else { // show menu
+		else {
 			JFrame jittaisManager = new JFrame();
 			jittaisManager.setMinimumSize(new Dimension(300,0));
 			jittaisManager.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -154,26 +161,26 @@ class Jjittai extends JWindow {
 		for (int i = 0, len = sprites.length(); i < len; i++)
 			this.sprites.add(spriteMaker(sprites.getJSONObject(i), zip));
 		
-			switch (jittai.optInt("behaviour", 0)) {
-				case 0:
-					behaviour = Behaviour.CHILL_AROUND;
-					break;
-				case 1:
-					behaviour = Behaviour.TOTALLY_IDLE;
-					break;
-				case 2:
-					behaviour = Behaviour.CHASE_POINTER;
-					break;
-				case 3:
-					behaviour = Behaviour.WHIMSICAL;
-					break;
-				case 4:
-					behaviour = Behaviour.CHILL_AROUND;
-					break;
-				default:
-					behaviour = Behaviour.CHILL_AROUND;
-					break;
-				}
+		switch (jittai.optInt("behaviour", 0)) {
+		case 0:
+			behaviour = Behaviour.CHILL_AROUND;
+			break;
+		case 1:
+			behaviour = Behaviour.TOTALLY_IDLE;
+			break;
+		case 2:
+			behaviour = Behaviour.CHASE_POINTER;
+			break;
+		case 3:
+			behaviour = Behaviour.WHIMSICAL;
+			break;
+		case 4:
+			behaviour = Behaviour.CHILL_AROUND;
+			break;
+		default:
+			behaviour = Behaviour.CHILL_AROUND;
+			break;
+		}
 
 		if(behaviour!=Behaviour.TOTALLY_IDLE){
 			JSONArray walkingCycle = jittai.getJSONArray("walkingCycle");
@@ -244,25 +251,71 @@ class Jjittai extends JWindow {
 				
 			});
 		}
-		addMouseListener(new MouseAdapter(){
-			@Override
-			public void mouseClicked(MouseEvent e){
-				if(e.getButton()==MouseEvent.BUTTON3){
-					frozen=true;
-					int opcion=JOptionPane.showConfirmDialog(null, "¿Desea matar a "+name+"?", "Matar", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, worker);
-					if(opcion==0){
-						if(Jjittais.size()>1){
-							kill();
-							for(Component checkBox:main.getComponents()){
-								JCheckBox JcheckBox=(JCheckBox)checkBox;
-								if(JcheckBox.getText().equals(name))
-									JcheckBox.setSelected(false);
-							}
-						}else System.exit(0);
-					}else startIdle();
+		if(behaviour==Behaviour.WHIMSICAL)
+			try {
+				GlobalScreen.registerNativeHook();
+				GlobalScreen.addNativeMouseListener(new NativeMouseListener(){
+				
+					@Override
+					public void nativeMousePressed(NativeMouseEvent arg0) {
+						if(frozen)
+							return;
+						randomWalk();
+					}
+					@Override
+					public void nativeMouseClicked(NativeMouseEvent arg0) {}
+					@Override
+					public void nativeMouseReleased(NativeMouseEvent arg0) {}
+				});
+				GlobalScreen.addNativeKeyListener(new NativeKeyListener(){
+					
+					@Override
+					public void nativeKeyPressed(NativeKeyEvent nativeEvent) {
+						if(frozen)
+							return;
+						randomWalk();
+					}
+					
+					@Override
+					public void nativeKeyTyped(NativeKeyEvent nativeEvent) {}
+					@Override
+					public void nativeKeyReleased(NativeKeyEvent nativeEvent) {}
+				});
+				
+			} catch (NativeHookException e) {}
+		if(canBeClicked)
+			addMouseListener(new MouseAdapter(){
+				@Override
+				public void mouseClicked(MouseEvent e){
+					if(e.getButton()==MouseEvent.BUTTON3){
+						askAboutKilling();
+					}
 				}
-			}
-		});
+			});
+		else try{
+			GlobalScreen.registerNativeHook();
+			GlobalScreen.addNativeMouseListener(new NativeMouseListener(){
+				
+				@Override
+				public void nativeMousePressed(NativeMouseEvent arg0) {
+					if(frozen)
+						return;
+					if(arg0.getButton()==MouseEvent.BUTTON2
+							&&touchingMouse())
+						askAboutKilling();
+				}
+				@Override
+				public void nativeMouseClicked(NativeMouseEvent arg0) {}
+				@Override
+				public void nativeMouseReleased(NativeMouseEvent arg0) {}
+			});
+		}catch(Exception e){System.err.println(e.getMessage());}
+		
+		
+		Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
+		logger.setLevel(Level.WARNING);
+		logger.setUseParentHandlers(false);
+
 		setBackground(new Color(0, 0, 0, 0));
 		setAlwaysOnTop(true);
 		setContentPane(new JLabel());
@@ -270,44 +323,66 @@ class Jjittai extends JWindow {
 
 	public void kill(){
 		frozen=true;
+		stopped=false;
 		setVisible(false);
 	}
 
 	public void summon() {
+		stopped=true;
 		setPosition(randomInt(screenSize.width - width), randomInt(screenSize.height - height));
 		setImage(this.idleCycle.get(0).sprite);
 		setVisible(true);
-		if(!canBeClicked)
-			try{
-				HWND hwnd = new HWND();
-				hwnd.setPointer(Native.getComponentPointer(this));
-				//WinDef.HWND hwnd = hwnd;
-				int wl = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
-				wl = wl | WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
-				User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, wl);
-			}catch(Exception e){}
 
-		// start activity//TODO
+		if(!canBeClicked&&!isAlreadyInvisible){
+			HWND hwnd = new HWND();
+			hwnd.setPointer(Native.getComponentPointer(this));
+			int wl = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
+			wl = wl | WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
+			User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, wl);
+			isAlreadyInvisible=true;
+		}
+		// start activity
 		switch (behaviour) {
 		case CHASE_POINTER:
-			// FORGET EVENTAS
-			// nah, itd depend on being quite
-
-			// walking, constantly, every second
-			// idle near mouse pointer
+			if(frozen)
+				frozen=false;
+			chaseMouse();
 			break;
+		case WHIMSICAL://TODO activo/2
 		case TOTALLY_IDLE:
-			startIdle();
-			break;
-		case WHIMSICAL:
-
-			// onclick, onkeytap; recalculate route, and walk
-			// in between, idle
-			break;
 		case CHILL_AROUND:
 			startIdle();
 			break;
 		}
+	}
+
+	private void startIdle() {
+		if(frozen)
+			frozen=false;
+		miliseconds=10+randomInt(120000);// TODO Activity variable? masybe too
+		if (idleCycle.size() == 1) {
+			setImage(idleCycle.get(0).sprite);
+			setTimeout(()->playEvent(), miliseconds);
+		} else idleStep(0);
+	}
+
+	private void chaseMouse(){
+		if(frozen)
+			return;
+		System.out.println(touchingMouse()+" "+stopped+" frozen"+frozen);
+		if(!touchingMouse())
+			walkTo(MouseInfo.getPointerInfo().getLocation());//TODO 	que asco
+		setTimeout(()->chaseMouse(),1000);
+	}
+
+	private boolean touchingMouse(){
+		Point mouseLoc=MouseInfo.getPointerInfo().getLocation();
+		int mX=(int)mouseLoc.getX(),mY=(int)mouseLoc.getY();
+		return (getX()-3<mX&&mX<getX()+width+3 && getY()-3<mY&&mY<getY()+height+3);
+	}
+
+	private void walkTo(Point p){
+		walkTo((int)p.getX(),(int)p.getY());
 	}
 
 	private void walkTo(int x, int y) {
@@ -322,36 +397,40 @@ class Jjittai extends JWindow {
 		currentWalkingAnimation = walkingCycle.get((int) Math.floor(degrees / partitions));
 		usedWnH[0] = width;
 		usedWnH[1] = height;
-		stopped = false;
-		walkingStep();
-		showWalkingStep(0);
+		if(stopped){
+			stopped = false;
+			walkingStep();
+			showWalkingStep(0);
+		}
 	}
 
 	private void walkingStep() {
-		if(!frozen){
-			if (currentSpeed != finalSpeed) {
-				currentSpeed += acceleration / 10;
-				if (currentSpeed > finalSpeed)
-					currentSpeed = finalSpeed;
-			}
-			setPosition(coordenates[0] + Math.cos(currentAngle) * currentSpeed,coordenates[1] + Math.sin(currentAngle) * currentSpeed);
-			Point displacedDest = new Point((int) (destination.getX() + (usedWnH[0] - width) / 2),
-					(int) (destination.getY() + (usedWnH[1] - height) / 2));
-			if (getX() - 4 < displacedDest.getX() && displacedDest.getX() < getX() + 4 + width
-					&& getY() - 4 < displacedDest.getY() && displacedDest.getY() < getY() + 4 + height) {
-				currentSpeed = 0;
-				stopped = true;
-				startIdle();
-			} else setTimeout(() -> walkingStep(), 100);
+		if(frozen)
+			return;
+		if (currentSpeed != finalSpeed) {
+			currentSpeed += acceleration / 10;
+			if (currentSpeed > finalSpeed)
+				currentSpeed = finalSpeed;
 		}
+		setPosition(coordenates[0] + Math.cos(currentAngle) * currentSpeed,coordenates[1] + Math.sin(currentAngle) * currentSpeed);
+		Point displacedDest = new Point((int) (destination.getX() + (usedWnH[0] - width) / 2),
+				(int)(destination.getY() + (usedWnH[1] - height) / 2));
+		if ((getX()-3 < displacedDest.getX() && displacedDest.getX() < getX() + width+3
+					&& getY()-3 < displacedDest.getY() && displacedDest.getY() < getY() + height+3)
+				||(behaviour==Behaviour.CHASE_POINTER
+					&&touchingMouse())) {
+			currentSpeed = 0;
+			stopped = true;
+			startIdle();
+		} else setTimeout(() -> walkingStep(), 100);
 	}
 
 	private void showWalkingStep(int step) {
-		if (!stopped&&!frozen) {
-			AnimationStep currentStep = currentWalkingAnimation.get(step);
-			setImage(currentStep.sprite);
-			setTimeout(() ->showWalkingStep(step == currentWalkingAnimation.size() - 1 ?0 : step + 1),Math.round(currentStep.duration * 1000));
-		}
+		if (stopped||frozen)
+			return;
+		AnimationStep currentStep = currentWalkingAnimation.get(step);
+		setImage(currentStep.sprite);
+		setTimeout(() ->showWalkingStep(step == currentWalkingAnimation.size() - 1 ?0 : step + 1),Math.round(currentStep.duration * 1000));
 	}
 
 	private static void setTimeout(Runnable runnable, long delay) {
@@ -394,37 +473,27 @@ class Jjittai extends JWindow {
 	}
 
 	private void animationStep(LinkedList<AnimationStep> animation, int step){
-		if(!frozen){
-			int size=animation.size(),
-				remainder=step%size;
-			AnimationStep thisStep=animation.get(remainder==0?0:size-remainder);
-			setImage(thisStep.sprite);
-			if(step > 0)
-				setTimeout(()->animationStep(animation,step-1),Math.round(thisStep.duration*1000));
-			else startIdle();
-		}
-	}
-	
-	private void startIdle() {
-		if(frozen)
-			frozen=false;
-		miliseconds=10+randomInt(120000);// TODO Activity variable? masybe too
-		if (idleCycle.size() == 1) {
-			setImage(idleCycle.get(0).sprite);
-			setTimeout(()->playEvent(), miliseconds);
-		} else idleStep(0);
+		if(frozen||!stopped)
+			return;
+		int size=animation.size(),
+			remainder=step%size;
+		AnimationStep thisStep=animation.get(remainder==0?0:size-remainder);
+		setImage(thisStep.sprite);
+		if(step > 0)
+			setTimeout(()->animationStep(animation,step-1),Math.round(thisStep.duration*1000));
+		else startIdle();
 	}
 
 	private void idleStep(int step) {
-		if(!frozen){
-			AnimationStep thisStep=idleCycle.get(step);
-			int time=(int)Math.round(thisStep.duration*1000);
-			miliseconds-=time;
-			setImage(thisStep.sprite);
-			if(miliseconds>=0)
-				setTimeout(()->idleStep(step==idleCycle.size()-1?0:step+1),time);
-			else playEvent();
-		}
+		if(frozen||!stopped)
+			return;
+		AnimationStep thisStep=idleCycle.get(step);
+		int time=(int)Math.round(thisStep.duration*1000);
+		miliseconds-=time;
+		setImage(thisStep.sprite);
+		if(miliseconds>=0)
+			setTimeout(()->idleStep(step==idleCycle.size()-1?0:step+1),time);
+		else playEvent();
 	}
 
 	private void setPosition(double x, double y){
@@ -503,4 +572,23 @@ class Jjittai extends JWindow {
 		,CHILL_AROUND
 	}
 
+	public void askAboutKilling(){
+		frozen=true;
+		JFrame parentFrame=new JFrame();
+		int opcion=JOptionPane.showConfirmDialog(parentFrame, "¿Desea matar a "+name+"?", "Matar", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, worker);
+		parentFrame.requestFocus();
+		parentFrame.dispose();
+		if(opcion==0){
+			if(Jjittais.size()>1){
+				kill();
+				for(Component checkBox:main.getComponents()){
+					JCheckBox JcheckBox=(JCheckBox)checkBox;
+					if(JcheckBox.getText().equals(name))
+						JcheckBox.setSelected(false);
+				}
+			}else System.exit(0);
+		}else startIdle();
+		
+	}
+	
 }

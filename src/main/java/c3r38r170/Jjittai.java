@@ -160,9 +160,16 @@ class Jjittai extends JWindow {
 		JSONArray sprites = jittai.getJSONArray("sprites");
 		if (sprites.length() == 0)
 			throw new JSONException("Tiene que haber por lo menos un sprite.");
-		for (int i = 0, len = sprites.length(); i < len; i++)
-			this.sprites.add(spriteMaker(sprites.getJSONObject(i), zip));
-		
+		for (int i = 0, len = sprites.length(); i < len; i++){
+			JSONObject rawSprite=sprites.getJSONObject(i);
+			BufferedImage file=ImageIO.read(zip.getInputStream(zip.getEntry(rawSprite.getString("file"))));
+			this.sprites.add(file.getSubimage(
+				rawSprite.optInt("x", 0)
+				,rawSprite.optInt("y", 0)
+				,rawSprite.optInt("width", file.getWidth())
+				,rawSprite.optInt("height", file.getHeight())));
+		}
+			
 		switch (jittai.optInt("behaviour", 0)) {
 		case 0:
 			behaviour = Behaviour.CHILL_AROUND;
@@ -538,15 +545,6 @@ class Jjittai extends JWindow {
 	}
 
 	//inner classes
-	
-	static private BufferedImage spriteMaker(JSONObject rawSprite,ZipFile zip)throws JSONException, IOException{//this belongs here; it was a class once, and it is only used where all other classes' instances are created
-		BufferedImage file=ImageIO.read(zip.getInputStream(zip.getEntry(rawSprite.getString("file"))));
-		return file.getSubimage(
-			rawSprite.optInt("x", 0)
-			,rawSprite.optInt("y", 0)
-			,rawSprite.optInt("width", file.getWidth())
-			,rawSprite.optInt("height", file.getHeight()));
-	}
 
 	private class Event{
 		private String name;

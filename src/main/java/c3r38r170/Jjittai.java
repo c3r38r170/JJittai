@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -65,6 +66,8 @@ class Jjittai extends JWindow {
 	private LinkedList<Event> events = new LinkedList<>();
 	private double finalSpeed;
 	private double acceleration;
+	private Map<String,Event> triggeredEvents;
+	private int[] timeBetweenEvents= new int[2];
 
 	// auxiliar properties
 	private double currentSpeed;
@@ -215,6 +218,20 @@ class Jjittai extends JWindow {
 		finalSpeed = jittai.optInt("speed", 10);
 		acceleration = jittai.optInt("acceleration", 10);
 		canBeClicked = behaviour == Behaviour.TOTALLY_IDLE ? true : jittai.optBoolean("canBeClicked", true);
+		JSONArray timeBetweenEvents=jittai.optJSONArray("timeBetweenEvents");
+		if(timeBetweenEvents==null){
+			this.timeBetweenEvents[0]=10;
+			this.timeBetweenEvents[1]=110;
+		}else{
+			int minimum=timeBetweenEvents.optInt(0,10);
+			if(minimum<1)
+				this.timeBetweenEvents[0]=1;
+			else this.timeBetweenEvents[0]=minimum;
+			int maximum=timeBetweenEvents.optInt(1,110);
+			if(maximum<minimum)
+				this.timeBetweenEvents[1]=0;
+			else this.timeBetweenEvents[1]=maximum-minimum;
+		}
 		JSONArray sounds = jittai.optJSONArray("sounds");
 		if (sounds != null)
 			for (int i = 0, len = sounds.length(); i < len; i++)
@@ -443,7 +460,7 @@ class Jjittai extends JWindow {
 	private void startIdle() {
 		if(frozen)
 			frozen=false;
-		miliseconds=10+randomInt(120000);// TODO Activity variable? masybe too
+		miliseconds=Math.round((timeBetweenEvents[0]+Math.random()*timeBetweenEvents[1])*1000);
 		if (idleCycle.size() == 1) {
 			setImage(idleCycle.get(0).sprite);
 			setTimeout(()->playEvent(), miliseconds);
@@ -595,5 +612,15 @@ class Jjittai extends JWindow {
 		,WHIMSICAL
 		,CHILL_AROUND
 	}
+	
+	/*
+		Falta:
+			
+			triggers
+				ondeath
+				onsummon
+				onstartwalking
+			cambiar gradualmente el angulo segun energia
+	*/
 	
 }

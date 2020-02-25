@@ -4,7 +4,7 @@
 
     <groupId>c3r38r170</groupId>
     <artifactId>Jjittai</artifactId>
-    <version>1</version>
+    <version>1.1</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

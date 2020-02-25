@@ -32,11 +32,12 @@ The JSON structure should be as follows:
 	]
   
 	//optional properties
-	,"speed":10 //optional DEFAULT: 10pix/second
-	,"canBeClicked":true //optional DEFAULT: true
+	,"speed":10 // DEFAULT: 10pix/second
+	,"canBeClicked":true // DEFAULT: true
 	,"behaviour":1
 	/*
-		optional DEFAULT: 4
+		DEFAULT: 4
+		
 		1:totally idle, doesn't walk but displays events
 		2:chase pointer
 		3:whimsical, just like current Aneko, it starts walking in a random direction every click or keypress
@@ -46,6 +47,9 @@ The JSON structure should be as follows:
 		annoy, it would prefer critical screen places to be
 		more!
 	*/
+	,"timeBetweenEvents":[10,120] // DEFAULT: [10,120] minimum and maximum idle time, in whole seconds
+	// if the minimum is less than 1, it defaults to 1
+	// if the maximum is less than the minimum, it defaults to the minimum
 	,"walkingCycle":[ //array of arrays of animation steps
 	//if its behaviour is not chill around, you need at least 4 cycles
 		[
@@ -77,8 +81,6 @@ The JSON structure should be as follows:
 Possibility of playing sounds. (very soon)
 
 Add events triggers. (not that soon)
-
-A property to define how often events should happen. (as soon as I find a good name for it)
 
 More file formats supported. (webp, jsonc...)
 

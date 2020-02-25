@@ -80,6 +80,8 @@ Add events triggers. (not that soon)
 
 A property to define how often events should happen. (as soon as I find a good name for it)
 
+More file formats supported. (webp, jsonc...)
+
 ## Known Issues
 The killing message may appear on the background.
 

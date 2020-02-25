@@ -109,10 +109,12 @@ class Jjittai extends JWindow {
 						out.write(buffer, 0, n);
 					Jjittais.add(new Jjittai(out.toString("UTF-8"), zip));
 				}
-			} catch (Exception e) {
-				JOptionPane.showMessageDialog(null, "Error: "+e.getMessage(), "ERROR", JOptionPane.ERROR);
+			} catch (IOException e){
+				JOptionPane.showMessageDialog(null, "Error de imagen: "+e.getMessage(), "ERROR", JOptionPane.ERROR);
+			}catch (JSONException e){
+				JOptionPane.showMessageDialog(null, "Error de JSON: "+e.getMessage(), "ERROR", JOptionPane.ERROR);
 			}
-
+			
 		}
 		if (Jjittais.size() == 0){
 			JOptionPane.showMessageDialog(null, "No se ha encontrado ningún Jjittai.", "Lo sentimos.", JOptionPane.INFORMATION_MESSAGE);
@@ -143,8 +145,8 @@ class Jjittai extends JWindow {
 			jittaisManager.pack();
 			if(jittaisManager.getWidth()<300)
 				jittaisManager.setSize(300,jittaisManager.getHeight());
-			jittaisManager.setLocation((int)(screenSize.getWidth()-50-jittaisManager.getWidth()),(int)(screenSize.getHeight()-50-jittaisManager.getHeight()));
-
+			jittaisManager.setLocation((int)(screenSize.width-50-jittaisManager.getWidth()),(int)(screenSize.height-50-jittaisManager.getHeight()));
+			
 			jittaisManager.setVisible(true);
 		}
 	}
@@ -181,7 +183,7 @@ class Jjittai extends JWindow {
 			behaviour = Behaviour.CHILL_AROUND;
 			break;
 		}
-
+		
 		if(behaviour!=Behaviour.TOTALLY_IDLE){
 			JSONArray walkingCycle = jittai.getJSONArray("walkingCycle");
 			if (walkingCycle.length() < 4)
@@ -199,9 +201,9 @@ class Jjittai extends JWindow {
 			throw new JSONException("Tiene que haber al menos un sprite de idle.");
 		for (int i = 0, len = idleCycle.length(); i < len; i++)
 			this.idleCycle.add(new AnimationStep(idleCycle.getJSONObject(i)));
-
+		
 		initializeWithMenu=jittai.optBoolean("initializeWithMenu",false);
-
+		
 		// optional
 		finalSpeed = jittai.optInt("speed", 10);
 		acceleration = jittai.optInt("acceleration", 10);
@@ -238,14 +240,14 @@ class Jjittai extends JWindow {
 				}
 			});
 			addMouseMotionListener(new MouseMotionListener(){
-
+				
 				@Override
 				public void mouseDragged(MouseEvent e) {
 					if(!frozen)
 						frozen=true;
 					setPosition(my.x+(e.getXOnScreen() - screen.x), my.y+(e.getYOnScreen() - screen.y));
 				}
-
+				
 				@Override
 				public void mouseMoved(MouseEvent e) {}
 				
@@ -262,6 +264,7 @@ class Jjittai extends JWindow {
 							return;
 						randomWalk();
 					}
+					
 					@Override
 					public void nativeMouseClicked(NativeMouseEvent arg0) {}
 					@Override
@@ -287,9 +290,8 @@ class Jjittai extends JWindow {
 			addMouseListener(new MouseAdapter(){
 				@Override
 				public void mouseClicked(MouseEvent e){
-					if(e.getButton()==MouseEvent.BUTTON3){
+					if(e.getButton()==MouseEvent.BUTTON3)
 						askAboutKilling();
-					}
 				}
 			});
 		else try{
@@ -300,8 +302,7 @@ class Jjittai extends JWindow {
 				public void nativeMousePressed(NativeMouseEvent arg0) {
 					if(frozen)
 						return;
-					if(arg0.getButton()==MouseEvent.BUTTON2
-							&&touchingMouse())
+					if(arg0.getButton()==MouseEvent.BUTTON3 && touchingMouse())
 						askAboutKilling();
 				}
 				@Override
@@ -315,24 +316,66 @@ class Jjittai extends JWindow {
 		Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
 		logger.setLevel(Level.WARNING);
 		logger.setUseParentHandlers(false);
-
+		
 		setBackground(new Color(0, 0, 0, 0));
 		setAlwaysOnTop(true);
 		setContentPane(new JLabel());
 	}
 
-	public void kill(){
-		frozen=true;
-		stopped=false;
-		setVisible(false);
+	//tool methods
+
+	private void setPosition(double x, double y){
+		coordenates[0]=x;
+		coordenates[1]=y;
+		setLocation((int)Math.round(coordenates[0]),(int)Math.round(coordenates[1]));
 	}
 
+	private void setImage(int sprite){
+		currentImage=sprites.get(sprite);
+		width=currentImage.getWidth();
+		height=currentImage.getHeight();
+		if(width!=getWidth()||height!=getHeight()){
+			setPosition(coordenates[0]+(getWidth()-width)/2, coordenates[1]+(getHeight()-height)/2);
+			setSize(width, height);
+		}
+		((JLabel) getContentPane()).setIcon(new ImageIcon(currentImage));
+	}
+
+	private int randomInt(int range){
+		return (int)Math.round(Math.random()*range);
+	}
+	
+	private static void setTimeout(Runnable runnable, long delay) {
+		new Thread(() -> {
+			try {
+				Thread.sleep(delay);
+				runnable.run();
+			} catch (InterruptedException e){}
+    }).start();
+	}
+
+	private void randomWalk(){
+		walkTo(randomInt(screenSize.width-width),randomInt(screenSize.height-height));
+	}
+
+	private void walkTo(Point p){
+		walkTo((int)p.getX(),(int)p.getY());
+	}
+
+	private boolean touchingMouse(){
+		Point mouseLoc=MouseInfo.getPointerInfo().getLocation();
+		int mX=(int)mouseLoc.getX(),mY=(int)mouseLoc.getY();
+		return (getX()-3<mX&&mX<getX()+width+3 && getY()-3<mY&&mY<getY()+height+3);
+	}
+	
+	//about life and death
+	
 	public void summon() {
 		stopped=true;
-		setPosition(randomInt(screenSize.width - width), randomInt(screenSize.height - height));
+		setPosition(Math.random()*(screenSize.width - width), Math.random()*(screenSize.height - height));
 		setImage(this.idleCycle.get(0).sprite);
 		setVisible(true);
-
+		
 		if(!canBeClicked&&!isAlreadyInvisible){
 			HWND hwnd = new HWND();
 			hwnd.setPointer(Native.getComponentPointer(this));
@@ -356,6 +399,40 @@ class Jjittai extends JWindow {
 		}
 	}
 
+	public void kill(){
+		frozen=true;
+		stopped=false;
+		setVisible(false);
+	}
+
+	public void askAboutKilling(){
+		frozen=true;
+		JFrame parentFrame=new JFrame();
+		int opcion=JOptionPane.showConfirmDialog(parentFrame, "¿Desea matar a "+name+"?", "Matar", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, worker);
+		parentFrame.requestFocus();
+		parentFrame.dispose();
+		if(opcion==0){
+			if(Jjittais.size()>1){
+				kill();
+				for(Component checkBox:main.getComponents()){
+					JCheckBox JcheckBox=(JCheckBox)checkBox;
+					if(JcheckBox.getText().equals(name))
+						JcheckBox.setSelected(false);
+				}
+			}else System.exit(0);
+		}else startIdle();
+	}
+	
+	//actual working logic
+
+	private void chaseMouse(){
+		if(frozen)
+			return;
+		if(!touchingMouse())
+			walkTo(MouseInfo.getPointerInfo().getLocation());//TODO 	que asco
+		setTimeout(()->chaseMouse(),1000);
+	}
+
 	private void startIdle() {
 		if(frozen)
 			frozen=false;
@@ -366,23 +443,50 @@ class Jjittai extends JWindow {
 		} else idleStep(0);
 	}
 
-	private void chaseMouse(){
-		if(frozen)
+	private void idleStep(int step) {
+		if(frozen||!stopped)
 			return;
-		System.out.println(touchingMouse()+" "+stopped+" frozen"+frozen);
-		if(!touchingMouse())
-			walkTo(MouseInfo.getPointerInfo().getLocation());//TODO 	que asco
-		setTimeout(()->chaseMouse(),1000);
+		AnimationStep thisStep=idleCycle.get(step);
+		int time=(int)Math.round(thisStep.duration*1000);
+		miliseconds-=time;
+		setImage(thisStep.sprite);
+		if(miliseconds>=0)
+			setTimeout(()->idleStep(step==idleCycle.size()-1?0:step+1),time);
+		else playEvent();
 	}
 
-	private boolean touchingMouse(){
-		Point mouseLoc=MouseInfo.getPointerInfo().getLocation();
-		int mX=(int)mouseLoc.getX(),mY=(int)mouseLoc.getY();
-		return (getX()-3<mX&&mX<getX()+width+3 && getY()-3<mY&&mY<getY()+height+3);
+	private void playEvent() {
+		if(events.size()==0)
+			if(behaviour==Behaviour.CHILL_AROUND&&Math.random()>0.6)
+				randomWalk();
+			else startIdle();
+		else{
+			int currentEvent=0;
+			double measure=Math.random()*(behaviour==Behaviour.CHILL_AROUND?1.5:1);
+			double possibility=0;
+			while(measure>possibility&&currentEvent<events.size())
+				possibility+=events.get(currentEvent++).probability/100.0;
+			if(measure<possibility){
+				Event chosenEvent=events.get(currentEvent-1);
+				int[] reps=chosenEvent.repetitions;
+				LinkedList<AnimationStep> chosenAnimation=chosenEvent.animation;
+				animationStep(chosenAnimation, chosenAnimation.size()*(reps[0]+(reps.length==1?0:randomInt(reps[1]-reps[0]))));
+			}else if(behaviour==Behaviour.CHILL_AROUND && measure>1)
+				randomWalk();
+			else startIdle();
+		}
 	}
 
-	private void walkTo(Point p){
-		walkTo((int)p.getX(),(int)p.getY());
+	private void animationStep(LinkedList<AnimationStep> animation, int step){
+		if(frozen||!stopped)
+			return;
+		int size=animation.size(),
+			remainder=step%size;
+		AnimationStep thisStep=animation.get(remainder==0?0:size-remainder);
+		setImage(thisStep.sprite);
+		if(step > 0)
+			setTimeout(()->animationStep(animation,step-1),Math.round(thisStep.duration*1000));
+		else startIdle();
 	}
 
 	private void walkTo(int x, int y) {
@@ -415,14 +519,14 @@ class Jjittai extends JWindow {
 		setPosition(coordenates[0] + Math.cos(currentAngle) * currentSpeed,coordenates[1] + Math.sin(currentAngle) * currentSpeed);
 		Point displacedDest = new Point((int) (destination.getX() + (usedWnH[0] - width) / 2),
 				(int)(destination.getY() + (usedWnH[1] - height) / 2));
-		if ((getX()-3 < displacedDest.getX() && displacedDest.getX() < getX() + width+3
-					&& getY()-3 < displacedDest.getY() && displacedDest.getY() < getY() + height+3)
-				||(behaviour==Behaviour.CHASE_POINTER
-					&&touchingMouse())) {
+		if ((
+				getX()-3 < displacedDest.getX() && displacedDest.getX() < getX() + width+3
+				&& getY()-3 < displacedDest.getY() && displacedDest.getY() < getY() + height+3
+		)||(behaviour==Behaviour.CHASE_POINTER && touchingMouse())){
 			currentSpeed = 0;
 			stopped = true;
 			startIdle();
-		} else setTimeout(() -> walkingStep(), 100);
+		}else setTimeout(() -> walkingStep(), 100);
 	}
 
 	private void showWalkingStep(int step) {
@@ -433,87 +537,9 @@ class Jjittai extends JWindow {
 		setTimeout(() ->showWalkingStep(step == currentWalkingAnimation.size() - 1 ?0 : step + 1),Math.round(currentStep.duration * 1000));
 	}
 
-	private static void setTimeout(Runnable runnable, long delay) {
-		new Thread(() -> {
-			try {
-				Thread.sleep(delay);
-				runnable.run();
-			} catch (InterruptedException e){}
-    }).start();
-	}
-
-	private void playEvent() {
-		if(events.size()==0)
-			if(behaviour==Behaviour.CHILL_AROUND&&Math.random()>0.6)
-				randomWalk();
-			else startIdle();
-		else{
-			int currentEvent=0;
-			double measure=Math.random()*(behaviour==Behaviour.CHILL_AROUND?1.5:1);
-			double possibility=0;
-			while(measure>possibility&&currentEvent<events.size())
-				possibility+=events.get(currentEvent++).probability/100.0;
-			if(measure<possibility){
-				Event chosenEvent=events.get(currentEvent-1);
-				int[] reps=chosenEvent.repetitions;
-				LinkedList<AnimationStep> chosenAnimation=chosenEvent.animation;
-				animationStep(chosenAnimation, chosenAnimation.size()*(reps[0]+(reps.length==1?0:randomInt(reps[1]-reps[0]))));
-			}else if(behaviour==Behaviour.CHILL_AROUND && measure>1)
-				randomWalk();
-			else startIdle();
-		}
-	}
-
-	private void randomWalk(){
-		walkTo(randomInt(screenSize.width-this.width),randomInt(screenSize.height-this.height));
-	}
-
-	private int randomInt(int range){
-		return (int)Math.round(Math.random()*range);
-	}
-
-	private void animationStep(LinkedList<AnimationStep> animation, int step){
-		if(frozen||!stopped)
-			return;
-		int size=animation.size(),
-			remainder=step%size;
-		AnimationStep thisStep=animation.get(remainder==0?0:size-remainder);
-		setImage(thisStep.sprite);
-		if(step > 0)
-			setTimeout(()->animationStep(animation,step-1),Math.round(thisStep.duration*1000));
-		else startIdle();
-	}
-
-	private void idleStep(int step) {
-		if(frozen||!stopped)
-			return;
-		AnimationStep thisStep=idleCycle.get(step);
-		int time=(int)Math.round(thisStep.duration*1000);
-		miliseconds-=time;
-		setImage(thisStep.sprite);
-		if(miliseconds>=0)
-			setTimeout(()->idleStep(step==idleCycle.size()-1?0:step+1),time);
-		else playEvent();
-	}
-
-	private void setPosition(double x, double y){
-		coordenates[0]=x;
-		coordenates[1]=y;
-		setLocation((int)Math.round(coordenates[0]),(int)Math.round(coordenates[1]));
-	}
-
-	private void setImage(int sprite){
-		currentImage=sprites.get(sprite);
-		width=currentImage.getWidth();
-		height=currentImage.getHeight();
-		if(width!=getWidth()||height!=getHeight()){
-			setPosition(coordenates[0]+(getWidth()-width)/2, coordenates[1]+(getHeight()-height)/2);
-			setSize(width, height);
-		}
-		((JLabel) getContentPane()).setIcon(new ImageIcon(currentImage));
-	}
-
-	static private BufferedImage spriteMaker(JSONObject rawSprite,ZipFile zip)throws JSONException, IOException{
+	//inner classes
+	
+	static private BufferedImage spriteMaker(JSONObject rawSprite,ZipFile zip)throws JSONException, IOException{//this belongs here; it was a class once, and it is only used where all other classes' instances are created
 		BufferedImage file=ImageIO.read(zip.getInputStream(zip.getEntry(rawSprite.getString("file"))));
 		return file.getSubimage(
 			rawSprite.optInt("x", 0)
@@ -570,25 +596,6 @@ class Jjittai extends JWindow {
 		,CHASE_POINTER
 		,WHIMSICAL
 		,CHILL_AROUND
-	}
-
-	public void askAboutKilling(){
-		frozen=true;
-		JFrame parentFrame=new JFrame();
-		int opcion=JOptionPane.showConfirmDialog(parentFrame, "¿Desea matar a "+name+"?", "Matar", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, worker);
-		parentFrame.requestFocus();
-		parentFrame.dispose();
-		if(opcion==0){
-			if(Jjittais.size()>1){
-				kill();
-				for(Component checkBox:main.getComponents()){
-					JCheckBox JcheckBox=(JCheckBox)checkBox;
-					if(JcheckBox.getText().equals(name))
-						JcheckBox.setSelected(false);
-				}
-			}else System.exit(0);
-		}else startIdle();
-		
 	}
 	
 }

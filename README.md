@@ -18,10 +18,10 @@ The JSON structure should be as follows:
 	,"sprites":[//at least one
 		{
 			"file":"file.png" //mandatory
-			,"x":0 //optional DEFAULT: 0
-			,"y":0 //optional DEFAULT: 0
-			,"width":10 //optional DEFAULT: the image width
-			,"height":10 //optional DEFAULT: the image height
+			,"x":0 //optional, DEFAULT: 0
+			,"y":0 //optional, DEFAULT: 0
+			,"width":10 //optional, DEFAULT: the image width
+			,"height":10 //optional, DEFAULT: the image height
 		}
 	]
 	,"idleCycle":[ //array of animation steps

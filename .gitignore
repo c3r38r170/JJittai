@@ -1,4 +1,6 @@
-/.vscode/
+.vscode/
 target/
 *.zip
 *.zipa
+.gitignore
+src/test/

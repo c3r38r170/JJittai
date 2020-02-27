@@ -1,5 +1,6 @@
 package c3r38r170;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
@@ -27,6 +28,10 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -57,7 +62,7 @@ class Jjittai extends JWindow {
 
 	// main properties
 	private String name;
-	private LinkedList<String> sounds = new LinkedList<>();// check how I managed sounds on the battery app
+	private LinkedList<Clip> sounds = new LinkedList<>();// check how I managed sounds on the battery app
 	private LinkedList<BufferedImage> sprites = new LinkedList<>();
 	private LinkedList<LinkedList<AnimationStep>> walkingCycle = new LinkedList<>();
 	private LinkedList<AnimationStep> idleCycle = new LinkedList<>();
@@ -113,9 +118,11 @@ class Jjittai extends JWindow {
 					Jjittais.add(new Jjittai(out.toString("UTF-8"), zip));
 				}
 			} catch (IOException e){
-				JOptionPane.showMessageDialog(null, "Error de imagen: "+e.getMessage(), "ERROR", JOptionPane.ERROR);
+				JOptionPane.showMessageDialog(null, "Error de imagen: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
 			}catch (JSONException e){
-				JOptionPane.showMessageDialog(null, "Error de JSON: "+e.getMessage(), "ERROR", JOptionPane.ERROR);
+				JOptionPane.showMessageDialog(null, "Error de JSON: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
+			} catch (LineUnavailableException | UnsupportedAudioFileException e) {
+				JOptionPane.showMessageDialog(null, "Error de sonido: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
 			}
 			
 		}
@@ -154,7 +161,7 @@ class Jjittai extends JWindow {
 		}
 	}
 
-	public Jjittai(String JSONString, ZipFile zip) throws JSONException, IOException {
+	public Jjittai(String JSONString, ZipFile zip) throws JSONException, IOException, LineUnavailableException, UnsupportedAudioFileException {
 		// mandatory
 		JSONObject jittai = new JSONObject(JSONString);
 		name = jittai.getString("name");
@@ -234,8 +241,11 @@ class Jjittai extends JWindow {
 		}
 		JSONArray sounds = jittai.optJSONArray("sounds");
 		if (sounds != null)
-			for (int i = 0, len = sounds.length(); i < len; i++)
-				this.sounds.add(sounds.getString(i));
+			for (int i = 0, len = sounds.length(); i < len; i++){
+				Clip clip=AudioSystem.getClip();
+				clip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(zip.getInputStream(zip.getEntry(sounds.getString(i))))));
+				this.sounds.add(clip);
+			}
 		JSONArray events = jittai.optJSONArray("events");
 		if (events != null){
 			int probabilitySum=0;
@@ -244,7 +254,7 @@ class Jjittai extends JWindow {
 				this.events.add(disposable);
 				probabilitySum+=disposable.probability;
 				if(probabilitySum>100)
-					throw new JSONException("La suma de las probabilidades debe ser menor a 100.");
+					throw new JSONException("La suma de las probabilidades debe ser menor o igual a 100.");
 			}
 		}
 		
@@ -375,7 +385,7 @@ class Jjittai extends JWindow {
 				Thread.sleep(delay);
 				runnable.run();
 			} catch (InterruptedException e){}
-    }).start();
+		}).start();
 	}
 
 	private void randomWalk(){
@@ -508,11 +518,21 @@ class Jjittai extends JWindow {
 			remainder=step%size;
 		AnimationStep thisStep=animation.get(remainder==0?0:size-remainder);
 		setImage(thisStep.sprite);
+		if(thisStep.sound!=-1){
+			Clip thisClip=sounds.get(thisStep.sound);
+			thisClip.start();
+			setTimeout(()->stopClip(thisClip),thisClip.getMicrosecondLength()/1000);
+		}
 		if(step > 0)
 			setTimeout(()->animationStep(animation,step-1),Math.round(thisStep.duration*1000));
 		else startIdle();
 	}
 
+	private void stopClip(Clip clipToStop){
+		clipToStop.stop();
+		clipToStop.setMicrosecondPosition(0);
+	}
+	
 	private void walkTo(int x, int y) {
 		destination = new Point(x, y);
 		int DeltaY = y - getY();
@@ -620,7 +640,7 @@ class Jjittai extends JWindow {
 				ondeath
 				onsummon
 				onstartwalking
-			cambiar gradualmente el angulo segun energia
+			cambiar gradualmente el angulo segun energia?
 	*/
 	
 }

@@ -15,12 +15,12 @@ The JSON structure should be as follows:
 {
 	//mandatory properties
 	"name":"Example"//cannot be empty
- 	,"sprites":[//at least one
+	,"sprites":[//at least one
 		{
 			"file":"file.png" //mandatory
 			,"x":0 //optional DEFAULT: 0
-     			,"y":0 //optional DEFAULT: 0
-     			,"width":10 //optional DEFAULT: the image width
+			,"y":0 //optional DEFAULT: 0
+			,"width":10 //optional DEFAULT: the image width
 			,"height":10 //optional DEFAULT: the image height
 		}
 	]
@@ -28,11 +28,12 @@ The JSON structure should be as follows:
 		{
 			"duration":0.1 //mandatory, in seconds
 			,"sprite":0 //mandatory, index in sprites array
+			,"sound":0 //optional, DEFAULT: -1 sound to play at this step, just .wav was tested and works, mp3 still don't
 		}
 	]
-  
+
 	//optional properties
-	,"speed":10 // DEFAULT: 10pix/second
+	,"speed":10 // DEFAULT: 10 (pix/second)
 	,"canBeClicked":true // DEFAULT: true
 	,"behaviour":1
 	/*
@@ -48,6 +49,9 @@ The JSON structure should be as follows:
 		more!
 	*/
 	,"timeBetweenEvents":[10,120] // DEFAULT: [10,120] minimum and maximum idle time, in whole seconds
+	,"sounds":[ // array of sound file names 
+		"sound.wav"
+	]
 	// if the minimum is less than 1, it defaults to 1
 	// if the maximum is less than the minimum, it defaults to the minimum
 	,"walkingCycle":[ //array of arrays of animation steps
@@ -56,6 +60,7 @@ The JSON structure should be as follows:
 			{
 				"duration":0.1
 				,"sprite":0
+				,"sound":0
 			}
 		]
 	]
@@ -69,6 +74,7 @@ The JSON structure should be as follows:
 				{
 					"duration":0.1
 					,"sprite":0
+					,"sound":0
 				}
 			]
 		}
@@ -78,11 +84,10 @@ The JSON structure should be as follows:
 ```
 
 ## To be added
-Possibility of playing sounds. (very soon)
 
 Add events triggers. (not that soon)
 
-More file formats supported. (webp, jsonc...)
+More file formats supported. (webp, jsonc, mp3...)
 
 ## Known Issues
 The killing message may appear on the background.

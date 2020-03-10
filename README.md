@@ -49,11 +49,11 @@ The JSON structure should be as follows:
 		more!
 	*/
 	,"timeBetweenEvents":[10,120] // DEFAULT: [10,120] minimum and maximum idle time, in whole seconds
+	// if the minimum is less than 1, it defaults to 1
+	// if the maximum is less than the minimum, it defaults to the minimum
 	,"sounds":[ // array of sound file names 
 		"sound.wav"
 	]
-	// if the minimum is less than 1, it defaults to 1
-	// if the maximum is less than the minimum, it defaults to the minimum
 	,"walkingCycle":[ //array of arrays of animation steps
 	//if its behaviour is not chill around, you need at least 4 cycles
 		[
@@ -69,7 +69,7 @@ The JSON structure should be as follows:
 			"name":"event1" //mandatory
 			,"probability":50 //mandatory 100 based
 			,"repetitionInfo":[1,5] //optional, DEFAULT: [1]
-			//the event animation will repeat between index 0 and index 1 times, or just index 0 if ther's no index 1 or it's less than index 0
+			//the event animation will repeat between index 0 and index 1 times, or just index 0 if there's no index 1 or it's less than index 0
 			,"animation":[ //mandatory array of animation steps
 				{
 					"duration":0.1
@@ -83,16 +83,20 @@ The JSON structure should be as follows:
 
 ```
 
-## To be added
+## To do
 
 Add events triggers. (not that soon)
 
-More file formats supported. (webp, jsonc, mp3...)
+Support more file formats. (webp, jsonc, mp3...)
+
+A proper documentation. (when I get my own website)
+
+A website to make JJittai creation more user-friendly. (see above)
 
 ## Known Issues
 The killing message may appear on the background.
 
-canBeClicked:false only works on Windows.
+canBeClicked:false only works on Windows. Or at least it should.
 
 The CHASE_CURSOR behaviour may miss the cursor by less than a pixel, so it starts "bouncing" back and forth to find it.
 

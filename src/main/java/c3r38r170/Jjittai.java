@@ -6,7 +6,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
-
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.logging.Level;
@@ -65,36 +65,46 @@ class Jjittai extends JWindow {
 	private LinkedList<Clip> sounds = new LinkedList<>();// check how I managed sounds on the battery app
 	private LinkedList<BufferedImage> sprites = new LinkedList<>();
 	private LinkedList<LinkedList<AnimationStep>> walkingCycle = new LinkedList<>();
-	private LinkedList<AnimationStep> idleCycle = new LinkedList<>();
+	private LinkedList<AnimationElement> idleCycle = new LinkedList<>();
 	private Behaviour behaviour;
+	private double angularSpeed;
 	private boolean canBeClicked;
 	private LinkedList<Event> events = new LinkedList<>();
 	private double finalSpeed;
 	private double acceleration;
-	private Map<String,Event> triggeredEvents;
 	private int[] timeBetweenEvents= new int[2];
 
 	// auxiliar properties
 	private double currentSpeed;
-	private double currentAngle;
-	private Point destination;
 	private boolean stopped;
-	private int[] usedWnH = new int[2];
-	private boolean isAlreadyInvisible=false;
+	private boolean isAlreadyUntouchable=false;
 	private BufferedImage currentImage;
-	private double[] coordenates = { 0, 0 };
-	static private Dimension screenSize=Toolkit.getDefaultToolkit().getScreenSize();;
 	private int height, width;
 	private LinkedList<AnimationStep> currentWalkingAnimation;
 	private long miliseconds = 0;
-
+	private LinkedList<StoppedAnimation> animationStack = new LinkedList<>();
+	private LinkedList<Integer> regularEvents = new LinkedList<>();
+	private Map<String,Integer> triggerEvents=new LinkedHashMap<>();
+	
+	private double[] coordenates = { 0, 0 };
+	private Point destination;
+	private int[] usedWnH = new int[2];
+	private double targetAngle;
+	private double currentAngle;
+	
+	private Runnable customActionAfterAnimation;
+	
+	private LinkedList<AnimationElement> currentAnimation = new LinkedList<>();
+	private String currentEventName;
+	private int currentAnimationSize;
+	private int currentAnimationID=0;
+	
 	//meta
-	static private LinkedList<Jjittai> Jjittais = new LinkedList<>();
+	static private Dimension screenSize=Toolkit.getDefaultToolkit().getScreenSize();;
+	static private LinkedList<Jjittai> instances = new LinkedList<>();
 	private boolean frozen=false;
 	private static JPanel main;
 	private static ImageIcon worker=new ImageIcon(Jjittai.class.getResource("/worker.png"));
-	private Point screen;
-	private Point my;
 	private boolean initializeWithMenu;
 
 	public static void main(String[] args) {
@@ -115,7 +125,7 @@ class Jjittai extends JWindow {
 					byte[] buffer = new byte[4096];
 					for (int n; (n = JSONStream.read(buffer)) != -1;)
 						out.write(buffer, 0, n);
-					Jjittais.add(new Jjittai(out.toString("UTF-8"), zip));
+					instances.add(new Jjittai(out.toString("UTF-8"), zip));
 				}
 			} catch (IOException e){
 				JOptionPane.showMessageDialog(null, "Error de imagen: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
@@ -126,11 +136,11 @@ class Jjittai extends JWindow {
 			}
 			
 		}
-		if (Jjittais.size() == 0){
+		if (instances.size() == 0){
 			JOptionPane.showMessageDialog(null, "No se ha encontrado ningún Jjittai.", "Lo sentimos.", JOptionPane.INFORMATION_MESSAGE);
 			System.exit(0);
-		}else if (Jjittais.size() == 1&&!Jjittais.get(0).initializeWithMenu)
-			Jjittais.get(0).summon();
+		}else if (instances.size() == 1&&!instances.get(0).initializeWithMenu)
+			instances.get(0).summon();
 		else {
 			JFrame jittaisManager = new JFrame();
 			jittaisManager.setMinimumSize(new Dimension(300,0));
@@ -140,7 +150,7 @@ class Jjittai extends JWindow {
 			main = new JPanel();
 			jittaisManager.setContentPane(new JScrollPane(main));
 			main.setLayout(new BoxLayout(main,BoxLayout.Y_AXIS));
-			for (Jjittai jittai : Jjittais) {
+			for (Jjittai jittai : instances) {
 				JCheckBox jittaiCheckBox = new JCheckBox(jittai.name);
 				jittaiCheckBox.addItemListener(new ItemListener(){
 					@Override
@@ -170,9 +180,17 @@ class Jjittai extends JWindow {
 		JSONArray sprites = jittai.getJSONArray("sprites");
 		if (sprites.length() == 0)
 			throw new JSONException("Tiene que haber por lo menos un sprite.");
+		Map<String,BufferedImage> originalImages=new LinkedHashMap<>();
 		for (int i = 0, len = sprites.length(); i < len; i++){
 			JSONObject rawSprite=sprites.getJSONObject(i);
-			BufferedImage file=ImageIO.read(zip.getInputStream(zip.getEntry(rawSprite.getString("file"))));
+			String imageName=rawSprite.getString("file");
+			BufferedImage file;
+			if(originalImages.containsKey(imageName))
+				file=originalImages.get(imageName);
+			else{
+				file=ImageIO.read(zip.getInputStream(zip.getEntry(imageName)));
+				originalImages.put(imageName,file);
+			}
 			this.sprites.add(file.getSubimage(
 				rawSprite.optInt("x", 0)
 				,rawSprite.optInt("y", 0)
@@ -217,14 +235,16 @@ class Jjittai extends JWindow {
 		if (idleCycle.length() == 0)
 			throw new JSONException("Tiene que haber al menos un sprite de idle.");
 		for (int i = 0, len = idleCycle.length(); i < len; i++)
-			this.idleCycle.add(new AnimationStep(idleCycle.getJSONObject(i)));
+			this.idleCycle.add(stepOrLoop(idleCycle.getJSONObject(i)));
 		
+		//hidden
 		initializeWithMenu=jittai.optBoolean("initializeWithMenu",false);
 		
 		// optional
 		finalSpeed = jittai.optInt("speed", 10);
 		acceleration = jittai.optInt("acceleration", 10);
 		canBeClicked = behaviour == Behaviour.TOTALLY_IDLE ? true : jittai.optBoolean("canBeClicked", true);
+		angularSpeed=Math.PI/180*jittai.optDouble("angularSpeed",180);
 		JSONArray timeBetweenEvents=jittai.optJSONArray("timeBetweenEvents");
 		if(timeBetweenEvents==null){
 			this.timeBetweenEvents[0]=10;
@@ -252,51 +272,58 @@ class Jjittai extends JWindow {
 			for (int i = 0, len = events.length(); i < len; i++){
 				Event disposable=new Event(events.getJSONObject(i));
 				this.events.add(disposable);
-				probabilitySum+=disposable.probability;
-				if(probabilitySum>100)
-					throw new JSONException("La suma de las probabilidades debe ser menor o igual a 100.");
+				if(disposable.triggers.size()>0)
+					for(String trigger:disposable.triggers){
+						if(triggerEvents.containsKey(trigger))
+							throw new JSONException("Se han encontrado múltiples evento para el mismo trigger.");
+						triggerEvents.put(trigger,this.events.size()-1);
+					}
+				else{
+					regularEvents.add(this.events.size()-1);
+					probabilitySum+=disposable.probability;
+					if(probabilitySum>100)
+						throw new JSONException("La suma de las probabilidades debe ser menor o igual a 100.");
+				}
 			}
 		}
 		
+		// TODO document this chunk
+		
 		if(behaviour==Behaviour.TOTALLY_IDLE){
-			addMouseListener(new MouseAdapter(){
+			MouseAdapter epicAdapter=new MouseAdapter(){
+				private Point originalClick,originalPosition;
 				@Override
 				public void mousePressed(MouseEvent e){
 					if(e.getButton()==MouseEvent.BUTTON1){
-						screen=new Point(e.getLocationOnScreen());
-						my=getLocation();
+						originalClick=new Point(e.getLocationOnScreen());
+						originalPosition=getLocation();
 					}
 				}
 				@Override
 				public void mouseReleased(MouseEvent e){
 					if(e.getButton()==MouseEvent.BUTTON1&&frozen)
-						startIdle();
+						startIdle();// TODO just resume, make a resume method on about life and death fms
 				}
-			});
-			addMouseMotionListener(new MouseMotionListener(){
-				
 				@Override
 				public void mouseDragged(MouseEvent e) {
 					if(!frozen)
 						frozen=true;
-					setPosition(my.x+(e.getXOnScreen() - screen.x), my.y+(e.getYOnScreen() - screen.y));
+					setPosition(originalPosition.x+(e.getXOnScreen() - originalClick.x), originalPosition.y+(e.getYOnScreen() - originalClick.y));
 				}
-				
-				@Override
-				public void mouseMoved(MouseEvent e) {}
-				
-			});
+			};
+			addMouseListener(epicAdapter);
+			addMouseMotionListener(epicAdapter);
 		}
 		if(behaviour==Behaviour.WHIMSICAL)
 			try {
 				GlobalScreen.registerNativeHook();
 				GlobalScreen.addNativeMouseListener(new NativeMouseListener(){
-				
+					
 					@Override
 					public void nativeMousePressed(NativeMouseEvent arg0) {
 						if(frozen)
 							return;
-						randomWalk();
+						//randomWalk(); // TODO made for debugging, uncomment
 					}
 					
 					@Override
@@ -306,17 +333,22 @@ class Jjittai extends JWindow {
 				});
 				GlobalScreen.addNativeKeyListener(new NativeKeyListener(){
 					
-					@Override
-					public void nativeKeyPressed(NativeKeyEvent nativeEvent) {
-						if(frozen)
-							return;
-						randomWalk();
-					}
+					boolean released=true;
 					
 					@Override
 					public void nativeKeyTyped(NativeKeyEvent nativeEvent) {}
+					
 					@Override
-					public void nativeKeyReleased(NativeKeyEvent nativeEvent) {}
+					public void nativeKeyPressed(NativeKeyEvent nativeEvent) {
+						if(frozen || !released)
+							return;
+						randomWalk();
+						released=false;
+					}
+					@Override
+					public void nativeKeyReleased(NativeKeyEvent nativeEvent) {
+						released=true;
+					}
 				});
 				
 			} catch (NativeHookException e) {}
@@ -336,7 +368,7 @@ class Jjittai extends JWindow {
 				public void nativeMousePressed(NativeMouseEvent arg0) {
 					if(frozen)
 						return;
-					if(arg0.getButton()==MouseEvent.BUTTON3 && touchingMouse())
+					if(arg0.getButton()==MouseEvent.BUTTON2 && touchingMouse())
 						askAboutKilling();
 				}
 				@Override
@@ -346,7 +378,7 @@ class Jjittai extends JWindow {
 			});
 		}catch(Exception e){System.err.println(e.getMessage());}
 		
-		
+		//stop native hook log spam, I THINK
 		Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
 		logger.setLevel(Level.WARNING);
 		logger.setUseParentHandlers(false);
@@ -379,6 +411,10 @@ class Jjittai extends JWindow {
 		return (int)Math.round(Math.random()*range);
 	}
 	
+	private int randomIntFromArray(int[] interval){
+		return interval[0]+(interval.length==1?0:randomInt(interval[1]-interval[0]));
+	}
+	
 	private static void setTimeout(Runnable runnable, long delay) {
 		new Thread(() -> {
 			try {
@@ -402,41 +438,84 @@ class Jjittai extends JWindow {
 		return (getX()-3<mX&&mX<getX()+width+3 && getY()-3<mY&&mY<getY()+height+3);
 	}
 	
+	private AnimationElement stepOrLoop(JSONObject inQuestion) throws JSONException {
+		return inQuestion.has("isLoop") && inQuestion.getBoolean("isLoop")? new AnimationLoop(inQuestion): new AnimationStep(inQuestion);
+	}
+	
+	private int[] getRepetitionsArray(JSONArray rawReps) throws JSONException { // TODO try to apply to timeBetweenEvents, maybe add default
+		if(rawReps==null||rawReps.length()==0){
+			int[] reps={1};
+			return reps;
+		}else{
+			int[] reps={
+				rawReps.getInt(0)
+				,rawReps.optInt(1,0)
+			};
+			if(reps[1]<=reps[0]){
+				int temp=reps[0];
+				reps=new int[1];
+				reps[0]=temp;
+			}
+			return reps;
+		}
+	}
+	
 	//about life and death
 	
-	public void summon() {
+	public void summon() { // TODO add onsummon
 		stopped=true;
+		boolean summonAnimation=false;
 		setPosition(Math.random()*(screenSize.width - width), Math.random()*(screenSize.height - height));
-		setImage(this.idleCycle.get(0).sprite);
+		LinkedList<AnimationElement> firstSeen=idleCycle;
+			//triggerEvents.containsKey("summon")?triggerEvents.get("summon").animation:;
+		if(triggerEvents.containsKey("summon")){
+			Event onsummon=events.get(triggerEvents.get("summon"));
+			if(Math.random()<onsummon.probability/100){
+				summonAnimation=true;
+				firstSeen=onsummon.animation;
+			}
+		}
+		int i=0;
+		while(firstSeen.get(i).isLoop)
+			i++;
+		setImage(((AnimationStep)firstSeen.get(i)).sprite);
 		setVisible(true);
 		
-		if(!canBeClicked&&!isAlreadyInvisible){
+		//Windows, can't be clicked, TODO check if it has to be applied every time or what, ... it works
+		//if(!canBeClicked && !isAlreadyUntouchable){
+		if(!canBeClicked){
 			HWND hwnd = new HWND();
 			hwnd.setPointer(Native.getComponentPointer(this));
 			int wl = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
 			wl = wl | WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
 			User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, wl);
-			isAlreadyInvisible=true;
+			//isAlreadyUntouchable=true;
 		}
 		// start activity
+		if(frozen)
+			frozen=false;
+		Runnable action=null;
 		switch (behaviour) {
 		case CHASE_POINTER:
-			if(frozen)
-				frozen=false;
-			chaseMouse();
+			action=()->chaseMouse();
 			break;
-		case WHIMSICAL://TODO activo/2
+		case WHIMSICAL:
 		case TOTALLY_IDLE:
 		case CHILL_AROUND:
-			startIdle();
+			action=()->startIdle();
 			break;
 		}
+		if(summonAnimation)
+			startEvent(events.get(triggerEvents.get("summon")),action);
+		else action.run();
 	}
 
 	public void kill(){
-		frozen=true;
-		stopped=false;
-		setVisible(false);
+		lookForAnimation("kill",()->{
+			frozen=true;
+			stopped=false;
+			setVisible(false);
+		});
 	}
 
 	public void askAboutKilling(){
@@ -446,14 +525,14 @@ class Jjittai extends JWindow {
 		parentFrame.requestFocus();
 		parentFrame.dispose();
 		if(opcion==0){
-			if(Jjittais.size()>1){
+			if(instances.size()>1){
 				kill();
 				for(Component checkBox:main.getComponents()){
 					JCheckBox JcheckBox=(JCheckBox)checkBox;
 					if(JcheckBox.getText().equals(name))
 						JcheckBox.setSelected(false);
 				}
-			}else System.exit(0);
+			}else lookForAnimation("kill",()->System.exit(0));
 		}else startIdle();
 	}
 	
@@ -471,26 +550,47 @@ class Jjittai extends JWindow {
 		if(frozen)
 			frozen=false;
 		miliseconds=Math.round((timeBetweenEvents[0]+Math.random()*timeBetweenEvents[1])*1000);
-		if (idleCycle.size() == 1) {
-			setImage(idleCycle.get(0).sprite);
+		if (idleCycle.size() == 1 && !idleCycle.get(0).isLoop) {// 
+			setImage(((AnimationStep)idleCycle.get(0)).sprite);
 			setTimeout(()->playEvent(), miliseconds);
-		} else idleStep(0);
+		}else{
+			currentAnimation=idleCycle;
+			currentAnimationSize=currentAnimation.size();
+			idleStep(currentAnimation.size());
+		}
 	}
-
+	
 	private void idleStep(int step) {
 		if(frozen||!stopped)
 			return;
-		AnimationStep thisStep=idleCycle.get(step);
-		int time=(int)Math.round(thisStep.duration*1000);
-		miliseconds-=time;
-		setImage(thisStep.sprite);
-		if(miliseconds>=0)
-			setTimeout(()->idleStep(step==idleCycle.size()-1?0:step+1),time);
-		else playEvent();
+			int modulo=step%currentAnimationSize;
+		AnimationElement thisElement=currentAnimation.get(
+			modulo==0?0:currentAnimationSize-modulo
+		);
+		if(thisElement.isLoop){
+			animationStack.push(new StoppedAnimation(currentAnimation,step==0?currentAnimationSize:step-1));// TODO again, make this a method somewhere, maybe join both?
+			AnimationLoop thisLoop=(AnimationLoop)thisElement;
+			currentAnimation=thisLoop.loop;
+			idleStep(randomIntFromArray(thisLoop.repetitions)*currentAnimationSize);
+		}else{
+			AnimationStep thisStep=(AnimationStep)thisElement;
+			int time=(int)Math.round(thisStep.duration*1000);
+			miliseconds-=time;
+			setImage(thisStep.sprite);
+			if(animationStack.size()>0 && step==0){
+				StoppedAnimation previousAnimation=animationStack.pop();
+				currentAnimation=previousAnimation.animation;
+				setTimeout(()->idleStep(previousAnimation.resumingStep),time);
+			}else if(animationStack.size()>0 || miliseconds>=0)
+				setTimeout(()->idleStep(step==1?currentAnimationSize:step-1),time);//(step==currentAnimation.size()-1?0:step+1),time);
+			else playEvent();
+		}
 	}
 
 	private void playEvent() {
-		if(events.size()==0)
+		if(!stopped)
+			return;
+		if(regularEvents.size()==0)
 			if(behaviour==Behaviour.CHILL_AROUND&&Math.random()>0.6)
 				randomWalk();
 			else startIdle();
@@ -498,34 +598,82 @@ class Jjittai extends JWindow {
 			int currentEvent=0;
 			double measure=Math.random()*(behaviour==Behaviour.CHILL_AROUND?1.5:1);
 			double possibility=0;
-			while(measure>possibility&&currentEvent<events.size())
-				possibility+=events.get(currentEvent++).probability/100.0;
+			int eventsSize=regularEvents.size();
+			while(measure>possibility&&currentEvent<eventsSize)
+				possibility+=events.get(regularEvents.get(currentEvent++)).probability/100.0;
 			if(measure<possibility){
-				Event chosenEvent=events.get(currentEvent-1);
-				int[] reps=chosenEvent.repetitions;
-				LinkedList<AnimationStep> chosenAnimation=chosenEvent.animation;
-				animationStep(chosenAnimation, chosenAnimation.size()*(reps[0]+(reps.length==1?0:randomInt(reps[1]-reps[0]))));
+				Event chosenEvent=events.get(regularEvents.get(currentEvent-1));
+				lookForAnimation(
+					"before-"+chosenEvent.name
+					,()->startEvent(chosenEvent,()->startIdle())
+				);
 			}else if(behaviour==Behaviour.CHILL_AROUND && measure>1)
 				randomWalk();
 			else startIdle();
 		}
 	}
-
-	private void animationStep(LinkedList<AnimationStep> animation, int step){
-		if(frozen||!stopped)
+	
+	private void lookForAnimation(String trigger,Runnable doAfter){
+		if(triggerEvents.containsKey(trigger))// TODO try all defaults (SIN PROBAR:after-Walking,  KILL,before-animation, after-animation)
+			startEvent(events.get(triggerEvents.get(trigger)), doAfter);
+		else doAfter.run();
+	}
+	
+	public void startEvent(Event chosenEvent,Runnable actionAfterAnimation){
+		if(currentEventName==chosenEvent.name)  
 			return;
-		int size=animation.size(),
+		int[] reps=chosenEvent.repetitions;
+		currentAnimation=chosenEvent.animation;
+		currentAnimationSize=currentAnimation.size();
+		currentEventName=chosenEvent.name;
+		customActionAfterAnimation=actionAfterAnimation;
+		animationStack.clear();
+		giveAnimationStep(currentAnimation.size()*randomIntFromArray(reps),++currentAnimationID);
+	}
+	
+	private void giveAnimationStep(/*LinkedList<AnimationElement> chosenAnimation,*/ int step,int ID){
+		//System.out.println(currentEventName+" "+currentAnimationID+" =? "+ID+" step:"+step); // TODO remove BOTH once you are sure
+		if(frozen||!stopped||currentAnimationID!=ID)
+			return;
+		int size=currentAnimation.size(),
 			remainder=step%size;
-		AnimationStep thisStep=animation.get(remainder==0?0:size-remainder);
-		setImage(thisStep.sprite);
-		if(thisStep.sound!=-1){
-			Clip thisClip=sounds.get(thisStep.sound);
-			thisClip.start();
-			setTimeout(()->stopClip(thisClip),thisClip.getMicrosecondLength()/1000);
+		AnimationElement thisElement=currentAnimation.get(remainder==0?0:size-remainder);
+		
+		if(thisElement.isLoop){
+			animationStack.push(new StoppedAnimation(currentAnimation, step-1));
+			AnimationLoop thisLoop = (AnimationLoop)thisElement;
+			currentAnimation=thisLoop.loop;
+			int[] reps=thisLoop.repetitions;
+			giveAnimationStep(currentAnimation.size()*randomIntFromArray(reps),ID);// TODO apply this utility
+		}else{
+			AnimationStep thisStep=(AnimationStep)thisElement;
+			//System.out.println(thisStep.sprite);
+			setImage(thisStep.sprite);
+			//sound
+			if(thisStep.sound!=-1){
+				Clip thisClip=sounds.get(thisStep.sound);
+				thisClip.start();
+				setTimeout(()->stopClip(thisClip),thisClip.getMicrosecondLength()/1000);
+			}
+			
+			long timeout=Math.round(thisStep.duration*1000);
+			if(step > 1)
+				setTimeout(()->giveAnimationStep(step-1,ID),timeout);
+			else if(animationStack.size()>0){
+				StoppedAnimation resumingAnimation;
+				do
+					resumingAnimation=animationStack.pop();
+				while(resumingAnimation.resumingStep==0);
+				currentAnimation=resumingAnimation.animation;
+				int resumingStep=resumingAnimation.resumingStep;
+				setTimeout(()->giveAnimationStep(resumingStep,ID), timeout);
+			}else{
+				setTimeout(()->{
+					currentEventName=null;
+					lookForAnimation("after-"+currentEventName,customActionAfterAnimation);
+				},timeout);
+			}
 		}
-		if(step > 0)
-			setTimeout(()->animationStep(animation,step-1),Math.round(thisStep.duration*1000));
-		else startIdle();
 	}
 
 	private void stopClip(Clip clipToStop){
@@ -537,18 +685,21 @@ class Jjittai extends JWindow {
 		destination = new Point(x, y);
 		int DeltaY = y - getY();
 		int DeltaX = x - getX();
+		targetAngle = Math.atan2(DeltaY, DeltaX);
 		double partitions = 2 * Math.PI / walkingCycle.size();
-		currentAngle = Math.atan2(DeltaY, DeltaX);
-		double degrees = Math.PI / 2 + partitions / 2 + currentAngle;
+		double degrees = Math.PI / 2 + partitions / 2 + targetAngle;
 		if (degrees < 0)
 			degrees += 2 * Math.PI;
 		currentWalkingAnimation = walkingCycle.get((int) Math.floor(degrees / partitions));
 		usedWnH[0] = width;
 		usedWnH[1] = height;
 		if(stopped){
-			stopped = false;
-			walkingStep();
-			showWalkingStep(0);
+			lookForAnimation("before-Walking", ()->{
+				currentAngle=targetAngle;
+				stopped = false;
+				walkingStep();
+				showWalkingStep(0);
+			});
 		}
 	}
 
@@ -560,19 +711,66 @@ class Jjittai extends JWindow {
 			if (currentSpeed > finalSpeed)
 				currentSpeed = finalSpeed;
 		}
+		if(currentAngle!=targetAngle){
+			double resta =currentAngle-targetAngle;
+			switch(Math.abs(resta)>Math.PI?2:0 + resta>0?1:0){
+			case 0://resta menor a 180 ochenta (sin conversion), targetAngle es mayor que currentAngle
+				currentAngle+=angularSpeed/10;
+				if(currentAngle>targetAngle)
+					currentAngle=targetAngle;
+				break;
+			case 1://resta menor a 180 ochenta (sin conversion), currentAngle es mayor que targetAngle
+				currentAngle-=angularSpeed/10;
+				if(currentAngle<targetAngle)
+					currentAngle=targetAngle;
+				break;
+			case 2://resta mayor a 180 ochenta (potencial conversion), currentAngle es mayor que targetAngle
+				currentAngle+=angularSpeed/10;
+				if(currentAngle>=Math.PI*2){
+					currentAngle-=Math.PI*2;
+					if(currentAngle>targetAngle)
+						currentAngle=targetAngle;
+				}
+				break;
+			case 3://resta mayor a 180 ochenta (potencial conversion), targetAngle es mayor que currentAngle
+				currentAngle-=angularSpeed/10;
+				if(currentAngle<=0){
+					currentAngle+=Math.PI*2;
+					if(currentAngle<targetAngle)
+						currentAngle=targetAngle;
+				}
+				break;
+			}
+			targetAngle = Math.atan2(destination.y - getY(), destination.x - getX());
+			double partitions = 2 * Math.PI / walkingCycle.size();
+			double degrees = Math.PI / 2 + partitions / 2 + currentAngle;
+			if (degrees < 0)
+				degrees += 2 * Math.PI;
+			if(degrees>2*Math.PI)
+				degrees-=2*Math.PI;
+			currentWalkingAnimation = walkingCycle.get((int) Math.floor(degrees / partitions));
+			//recalculateAngle();
+		}
 		setPosition(coordenates[0] + Math.cos(currentAngle) * currentSpeed,coordenates[1] + Math.sin(currentAngle) * currentSpeed);
-		Point displacedDest = new Point((int) (destination.getX() + (usedWnH[0] - width) / 2),
-				(int)(destination.getY() + (usedWnH[1] - height) / 2));
+		Point displacedDest = new Point(
+			(int)(destination.x + (usedWnH[0] - width) / 2),
+			(int)(destination.y + (usedWnH[1] - height) / 2)
+		);
 		if ((
-				getX()-3 < displacedDest.getX() && displacedDest.getX() < getX() + width+3
-				&& getY()-3 < displacedDest.getY() && displacedDest.getY() < getY() + height+3
+				getX()-3 < displacedDest.x && displacedDest.x < getX() + width+3
+				&& getY()-3 < displacedDest.y && displacedDest.y < getY() + height+3
 		)||(behaviour==Behaviour.CHASE_POINTER && touchingMouse())){
 			currentSpeed = 0;
 			stopped = true;
-			startIdle();
+			lookForAnimation("after-Walking", ()->startIdle());
 		}else setTimeout(() -> walkingStep(), 100);
 	}
-
+	
+	
+	private void recalculateAngle(){
+		
+	}
+	
 	private void showWalkingStep(int step) {
 		if (stopped||frozen)
 			return;
@@ -587,34 +785,49 @@ class Jjittai extends JWindow {
 		private String name;
 		private int probability;
 		private int[] repetitions;
-		private LinkedList<AnimationStep> animation=new LinkedList<>();
+		private LinkedList<AnimationElement> animation=new LinkedList<>();
+		private LinkedList<String> triggers=new LinkedList<>();
 
 		public Event(JSONObject rawEvent) throws JSONException{
 			JSONArray animationsArray=rawEvent.getJSONArray("animation");
 			if(animationsArray.length()==0)
 				throw new JSONException("La animación debe constar de al menos un sprite.");
 			for(int i=0,len=animationsArray.length();i<len;i++)
-				animation.add(new AnimationStep(animationsArray.getJSONObject(i)));
+				animation.add(stepOrLoop(animationsArray.getJSONObject(i)));
 			name=rawEvent.getString("name");
-			probability=rawEvent.getInt("probability");
-			JSONArray rawRepetitions=rawEvent.optJSONArray("repetitionInfo");
-			if(rawRepetitions==null||rawRepetitions.length()==0){
-				repetitions=new int[1];
-				repetitions[0]=1;
-			}else{
-				repetitions=new int[2];
-				repetitions[0]=rawRepetitions.getInt(0);
-				repetitions[1]=rawRepetitions.optInt(1,0);
-				if(repetitions[1]<repetitions[0]){
-					int temp=repetitions[0];
-					repetitions=new int[1];
-					repetitions[0]=temp;
-				}
-			}
+			probability=rawEvent.optInt("probability",100);
+			repetitions=getRepetitionsArray(rawEvent.optJSONArray("repetitionInfo"));
+			String trigger=rawEvent.optString("trigger",null);
+			if(trigger==null){
+				JSONArray triggers=rawEvent.optJSONArray("triggers");
+				if(triggers!=null)
+					for(int i=0,len=triggers.length();i<len;i++)
+						this.triggers.add(triggers.getString(i));
+			}else triggers.add(trigger);
 		}
 	}
-
-	private class AnimationStep{
+	
+	
+	private abstract class AnimationElement{
+		private boolean isLoop=false;
+	}
+	
+	private class AnimationLoop extends AnimationElement{
+		private LinkedList<AnimationElement> loop= new LinkedList<>();
+		private int[] repetitions;
+		
+		public AnimationLoop(JSONObject rawLoop) throws JSONException {
+			super.isLoop=true;
+			JSONArray rawAnimation=rawLoop.getJSONArray("loop");
+			for(int i=0,len=rawAnimation.length();i<len;i++)
+				loop.add(stepOrLoop(rawAnimation.getJSONObject(i)));
+			repetitions=getRepetitionsArray(rawLoop.optJSONArray("repetitions"));
+		}
+		
+	}
+	
+	
+	private class AnimationStep extends AnimationElement{
 		private double duration;
 		private int sprite;
 		private int sound;
@@ -623,6 +836,17 @@ class Jjittai extends JWindow {
 			duration=rawObject.optDouble("duration",0);
 			sprite=rawObject.getInt("sprite");
 			sound=rawObject.optInt("sound", -1);
+		}
+	}
+	
+	private class StoppedAnimation{
+		
+		public LinkedList<AnimationElement> animation;
+		public int resumingStep;
+		
+		public StoppedAnimation(LinkedList<AnimationElement> animation,int resumingStep){
+			this.animation=animation;
+			this.resumingStep=resumingStep;
 		}
 	}
 

@@ -24,7 +24,8 @@ The JSON structure should be as follows:
 			,"height":10 //optional, DEFAULT: the image height
 		}
 	]
-	,"idleCycle":[ //array of animation steps
+	,"idleCycle":[ //array of animation elements
+		//animation step example:
 		{
 			"duration":0.1 //mandatory, in seconds
 			,"sprite":0 //mandatory, index in sprites array
@@ -48,6 +49,8 @@ The JSON structure should be as follows:
 		annoy, it would prefer critical screen places to be
 		more!
 	*/
+	,"angularSpeed": //DEFAULT: 90 (degrees/second)
+	//determines how fast or slow can a Jittai turn around, only useful in behaviours 2 and 3
 	,"timeBetweenEvents":[10,120] // DEFAULT: [10,120] minimum and maximum idle time, in whole seconds
 	// if the minimum is less than 1, it defaults to 1
 	// if the maximum is less than the minimum, it defaults to the minimum
@@ -67,16 +70,31 @@ The JSON structure should be as follows:
 	,"events":[ //array of event objects
 		{
 			"name":"event1" //mandatory
-			,"probability":50 //mandatory 100 based
+			,"probability":50 //optional, DEFAULT: 100
+			//the default is for triggered events to be able to ommit the probability property, you should define it for non-triggered events as a sum of more than 100 on regular events is not allowed
+			,"trigger":"after-"
 			,"repetitionInfo":[1,5] //optional, DEFAULT: [1]
 			//the event animation will repeat between index 0 and index 1 times, or just index 0 if there's no index 1 or it's less than index 0
-			,"animation":[ //mandatory array of animation steps
+			,"animation":[ //mandatory array of animation elements
 				{
 					"duration":0.1
 					,"sprite":0
 					,"sound":0
 				}
+				//animation loop example:
+				{
+					"isLoop":true //mandatory, to tell the software this is not a simple animation step
+					"repetitionInfo":[2,4] //optional, DEFAULT [1], but there's no point on not defining it
+					"loop":[ //mandatory array of animation elements
+						{
+							"duration":0.1
+							,"sprite":0
+							,"sound":0
+						}
+					]
+				}
 			]
+			//arrays of element must not have empty loops
 		}
 	]
 }
@@ -92,6 +110,10 @@ Support more file formats. (webp, jsonc, mp3...)
 A proper documentation. (when I get my own website)
 
 A website to make JJittai creation more user-friendly. (see above)
+
+Support for probability on animation loops.
+
+Named sprites
 
 ## Known Issues
 The killing message may appear on the background.

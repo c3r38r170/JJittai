@@ -323,7 +323,7 @@ class Jjittai extends JWindow {
 					public void nativeMousePressed(NativeMouseEvent arg0) {
 						if(frozen)
 							return;
-						//randomWalk(); // TODO made for debugging, uncomment
+						randomWalk();
 					}
 					
 					@Override
@@ -462,7 +462,7 @@ class Jjittai extends JWindow {
 	
 	//about life and death
 	
-	public void summon() { // TODO add onsummon
+	public void summon() {
 		stopped=true;
 		boolean summonAnimation=false;
 		setPosition(Math.random()*(screenSize.width - width), Math.random()*(screenSize.height - height));
@@ -631,8 +631,7 @@ class Jjittai extends JWindow {
 		giveAnimationStep(currentAnimation.size()*randomIntFromArray(reps),++currentAnimationID);
 	}
 	
-	private void giveAnimationStep(/*LinkedList<AnimationElement> chosenAnimation,*/ int step,int ID){
-		//System.out.println(currentEventName+" "+currentAnimationID+" =? "+ID+" step:"+step); // TODO remove BOTH once you are sure
+	private void giveAnimationStep( int step,int ID){
 		if(frozen||!stopped||currentAnimationID!=ID)
 			return;
 		int size=currentAnimation.size(),
@@ -647,7 +646,6 @@ class Jjittai extends JWindow {
 			giveAnimationStep(currentAnimation.size()*randomIntFromArray(reps),ID);// TODO apply this utility
 		}else{
 			AnimationStep thisStep=(AnimationStep)thisElement;
-			//System.out.println(thisStep.sprite);
 			setImage(thisStep.sprite);
 			//sound
 			if(thisStep.sound!=-1){
@@ -764,11 +762,6 @@ class Jjittai extends JWindow {
 			stopped = true;
 			lookForAnimation("after-Walking", ()->startIdle());
 		}else setTimeout(() -> walkingStep(), 100);
-	}
-	
-	
-	private void recalculateAngle(){
-		
 	}
 	
 	private void showWalkingStep(int step) {

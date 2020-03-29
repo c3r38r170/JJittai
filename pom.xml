@@ -51,6 +51,18 @@
 									<descriptorRef>jar-with-dependencies</descriptorRef>
 								</descriptorRefs>
 							</configuration>
+							<executions>
+								<execution>
+									<id>make-onlyJar</id> <!-- this is used for inheritance merges -->
+									<phase>package</phase> <!-- bind to the packaging phase -->
+									<goals>
+										<goal>single</goal>
+									</goals>
+								</execution>
+							</executions>
+							<!--<goals>
+								<goal>single</goal>
+							</goals>-->
 						</plugin>
 				</plugins>
     </build>

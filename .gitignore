@@ -1,5 +1,5 @@
-.vscode/
 target/
+.vscode/
 *.zip
 *.zipa
 .gitignore

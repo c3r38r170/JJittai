@@ -133,6 +133,8 @@ class JJittai extends JWindow {
 				JOptionPane.showMessageDialog(null, "Error de JSON: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
 			} catch (LineUnavailableException | UnsupportedAudioFileException e) {
 				JOptionPane.showMessageDialog(null, "Error de sonido: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
+			} catch (NullPointerException e) {
+				JOptionPane.showMessageDialog(null, "NullPointerException, probablemente sea por un error en algún nombre mal escrito en el JSON.", "ERROR", JOptionPane.ERROR_MESSAGE);
 			}
 			
 		}
@@ -171,7 +173,7 @@ class JJittai extends JWindow {
 		}
 	}
 
-	public JJittai(String JSONString, ZipFile zip) throws JSONException, IOException, LineUnavailableException, UnsupportedAudioFileException {
+	public JJittai(String JSONString, ZipFile zip) throws JSONException, IOException, LineUnavailableException, UnsupportedAudioFileException, NullPointerException{
 		// mandatory
 		JSONObject jittai = new JSONObject(JSONString);
 		name = jittai.getString("name");
@@ -826,9 +828,9 @@ class JJittai extends JWindow {
 		private int sound;
 		
 		public AnimationStep(JSONObject rawObject) throws JSONException {
-			duration=rawObject.optDouble("duration",1);
-			if(duration<1)
-				duration=1;
+			duration=rawObject.optDouble("duration",.001);
+			if(duration<.001)
+				duration=.001;
 			sprite=rawObject.getInt("sprite");
 			sound=rawObject.optInt("sound", -1);
 		}

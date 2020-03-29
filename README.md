@@ -27,8 +27,8 @@ The JSON structure should be as follows:
 	,"idleCycle":[ //array of animation elements
 		//animation step example:
 		{
-			"duration":0.1 //mandatory, in seconds
-			,"sprite":0 //mandatory, index in sprites array
+			"sprite":0 //mandatory, index in sprites array
+			,"duration":0.1 //optional, DEFAULT: 0.001 in seconds, cannot be less
 			,"sound":0 //optional, DEFAULT: -1 sound to play at this step, just .wav was tested and works, mp3 still don't
 		}
 	]
@@ -61,8 +61,8 @@ The JSON structure should be as follows:
 	//if its behaviour is not chill around, you need at least 4 cycles
 		[
 			{
-				"duration":0.1
-				,"sprite":0
+				"sprite":0
+				,"duration":0.1
 				,"sound":0
 			}
 		]
@@ -77,8 +77,8 @@ The JSON structure should be as follows:
 			//the event animation will repeat between index 0 and index 1 times, or just index 0 if there's no index 1 or it's less than index 0
 			,"animation":[ //mandatory array of animation elements
 				{
-					"duration":0.1
-					,"sprite":0
+					"sprite":0
+					,"duration":0.1
 					,"sound":0
 				}
 				//animation loop example:
@@ -87,8 +87,8 @@ The JSON structure should be as follows:
 					"repetitionInfo":[2,4] //optional, DEFAULT [1], but there's no point on not defining it
 					"loop":[ //mandatory array of animation elements
 						{
-							"duration":0.1
-							,"sprite":0
+							"sprite":0
+							,"duration":0.1
 							,"sound":0
 						}
 					]
@@ -113,9 +113,12 @@ A website to make JJittai creation more user-friendly. (see above)
 
 Support for probability on animation loops.
 
-Named sprites
+Named sprites.
+
+Maybe define general sprite size.
 
 ## Known Issues
+
 The killing message may appear on the background.
 
 canBeClicked:false only works on Windows. Or at least it should.

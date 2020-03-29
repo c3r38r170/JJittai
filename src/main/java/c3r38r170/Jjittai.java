@@ -57,7 +57,7 @@ import com.sun.jna.platform.win32.WinUser;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.Native;
 
-class Jjittai extends JWindow {
+class JJittai extends JWindow {
 	private static final long serialVersionUID = 1L;
 
 	// main properties
@@ -101,10 +101,10 @@ class Jjittai extends JWindow {
 	
 	//meta
 	static private Dimension screenSize=Toolkit.getDefaultToolkit().getScreenSize();;
-	static private LinkedList<Jjittai> instances = new LinkedList<>();
+	static private LinkedList<JJittai> instances = new LinkedList<>();
 	private boolean frozen=false;
 	private static JPanel main;
-	private static ImageIcon worker=new ImageIcon(Jjittai.class.getResource("/worker.png"));
+	private static ImageIcon worker=new ImageIcon(JJittai.class.getResource("/worker.png"));
 	private boolean initializeWithMenu;
 
 	public static void main(String[] args) {
@@ -125,7 +125,7 @@ class Jjittai extends JWindow {
 					byte[] buffer = new byte[4096];
 					for (int n; (n = JSONStream.read(buffer)) != -1;)
 						out.write(buffer, 0, n);
-					instances.add(new Jjittai(out.toString("UTF-8"), zip));
+					instances.add(new JJittai(out.toString("UTF-8"), zip));
 				}
 			} catch (IOException e){
 				JOptionPane.showMessageDialog(null, "Error de imagen: "+e.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
@@ -137,7 +137,7 @@ class Jjittai extends JWindow {
 			
 		}
 		if (instances.size() == 0){
-			JOptionPane.showMessageDialog(null, "No se ha encontrado ningún Jjittai.", "Lo sentimos.", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(null, "No se ha encontrado ningún JJittai.", "Lo sentimos.", JOptionPane.INFORMATION_MESSAGE);
 			System.exit(0);
 		}else if (instances.size() == 1&&!instances.get(0).initializeWithMenu)
 			instances.get(0).summon();
@@ -145,12 +145,12 @@ class Jjittai extends JWindow {
 			JFrame jittaisManager = new JFrame();
 			jittaisManager.setMinimumSize(new Dimension(300,0));
 			jittaisManager.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-			jittaisManager.setTitle("Jjittai's Manager");
+			jittaisManager.setTitle("JJittai's Manager");
 			jittaisManager.setIconImage(worker.getImage());
 			main = new JPanel();
 			jittaisManager.setContentPane(new JScrollPane(main));
 			main.setLayout(new BoxLayout(main,BoxLayout.Y_AXIS));
-			for (Jjittai jittai : instances) {
+			for (JJittai jittai : instances) {
 				JCheckBox jittaiCheckBox = new JCheckBox(jittai.name);
 				jittaiCheckBox.addItemListener(new ItemListener(){
 					@Override
@@ -171,7 +171,7 @@ class Jjittai extends JWindow {
 		}
 	}
 
-	public Jjittai(String JSONString, ZipFile zip) throws JSONException, IOException, LineUnavailableException, UnsupportedAudioFileException {
+	public JJittai(String JSONString, ZipFile zip) throws JSONException, IOException, LineUnavailableException, UnsupportedAudioFileException {
 		// mandatory
 		JSONObject jittai = new JSONObject(JSONString);
 		name = jittai.getString("name");
@@ -254,13 +254,13 @@ class Jjittai extends JWindow {
 			if(minimum<1)
 				this.timeBetweenEvents[0]=1;
 			else this.timeBetweenEvents[0]=minimum;
-			int maximum=timeBetweenEvents.optInt(1,110);
+			int maximum=timeBetweenEvents.optInt(1,this.timeBetweenEvents[0]);
 			if(maximum<minimum)
 				this.timeBetweenEvents[1]=0;
 			else this.timeBetweenEvents[1]=maximum-minimum;
 		}
 		JSONArray sounds = jittai.optJSONArray("sounds");
-		if (sounds != null)
+		if (null != sounds)
 			for (int i = 0, len = sounds.length(); i < len; i++){
 				Clip clip=AudioSystem.getClip();
 				clip.open(AudioSystem.getAudioInputStream(new BufferedInputStream(zip.getInputStream(zip.getEntry(sounds.getString(i))))));
@@ -443,7 +443,7 @@ class Jjittai extends JWindow {
 	}
 	
 	private int[] getRepetitionsArray(JSONArray rawReps) throws JSONException { // TODO try to apply to timeBetweenEvents, maybe add default
-		if(rawReps==null||rawReps.length()==0){
+		if(null==rawReps || rawReps.length()==0){
 			int[] reps={1};
 			return reps;
 		}else{
@@ -826,7 +826,9 @@ class Jjittai extends JWindow {
 		private int sound;
 		
 		public AnimationStep(JSONObject rawObject) throws JSONException {
-			duration=rawObject.optDouble("duration",0);
+			duration=rawObject.optDouble("duration",1);
+			if(duration<1)
+				duration=1;
 			sprite=rawObject.getInt("sprite");
 			sound=rawObject.optInt("sound", -1);
 		}

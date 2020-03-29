@@ -3,8 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>c3r38r170</groupId>
-    <artifactId>Jjittai</artifactId>
-    <version>1.2</version>
+    <artifactId>JJittai</artifactId>
+    <version>1.2.2</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -44,7 +44,7 @@
 								<appendAssemblyId>false</appendAssemblyId>
 								<archive>
 									<manifest>
-										<mainClass>c3r38r170.Jjittai</mainClass>
+										<mainClass>c3r38r170.JJittai</mainClass>
 									</manifest>
 								</archive>
 								<descriptorRefs>

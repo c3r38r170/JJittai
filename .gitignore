@@ -1,6 +1,0 @@
-target/
-.vscode/
-*.zip
-*.zipa
-.gitignore
-src/test/

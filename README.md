@@ -14,8 +14,10 @@ The JSON structure should be as follows:
 ```
 {
 	//mandatory properties
-	"name":"Example"//cannot be empty
+	
+	"name":"Example"
 	,"sprites":[//at least one
+		//sprite example
 		{
 			"file":"file.png" //mandatory
 			,"x":0 //optional, DEFAULT: 0
@@ -34,31 +36,32 @@ The JSON structure should be as follows:
 	]
 
 	//optional properties
+	
 	,"speed":10 // DEFAULT: 10 (pix/second)
 	,"canBeClicked":true // DEFAULT: true
 	,"behaviour":1
-	/*
-		DEFAULT: 4
-		
-		1:totally idle, doesn't walk but displays events
-		2:chase pointer
-		3:whimsical, just like current Aneko, it starts walking in a random direction every click or keypress
-		4:chill around, like totally idle, but ocasionally walks
+		/*
+			DEFAULT: 4
 
-		future implementation:
-		annoy, it would prefer critical screen places to be
-		more!
-	*/
+			1:totally idle, doesn't walk but displays events
+			2:chase pointer
+			3:whimsical, just like current Aneko, it starts walking in a random direction every click or keypress
+			4:chill around, like totally idle, but ocasionally walks
+
+			future implementation:
+			annoy, it would prefer critical screen places to be
+			more!
+		*/
 	,"angularSpeed": //DEFAULT: 90 (degrees/second)
-	//determines how fast or slow can a Jittai turn around, only useful in behaviours 2 and 3
+		//determines how fast or slow can a Jittai turn around, only useful in behaviours 2 and 3
 	,"timeBetweenEvents":[10,120] // DEFAULT: [10,120] minimum and maximum idle time, in whole seconds
-	// if the minimum is less than 1, it defaults to 1
-	// if the maximum is less than the minimum, it defaults to the minimum
+		// if the minimum is less than 1, it defaults to 1
+		// if the maximum is less than the minimum, it defaults to the minimum
 	,"sounds":[ // array of sound file names 
 		"sound.wav"
 	]
 	,"walkingCycle":[ //array of arrays of animation steps
-	//if its behaviour is not chill around, you need at least 4 cycles
+		//if its behaviour is not chill around (4), you need at least 4 cycles
 		[
 			{
 				"sprite":0
@@ -71,10 +74,10 @@ The JSON structure should be as follows:
 		{
 			"name":"event1" //mandatory
 			,"probability":50 //optional, DEFAULT: 100
-			//the default is for triggered events to be able to ommit the probability property, you should define it for non-triggered events as a sum of more than 100 on regular events is not allowed
-			,"trigger":"after-"
+				//the default is for triggered events to be able to ommit the probability property, you should define it for non-triggered events as a sum of more than 100 on regular events is not allowed
+			,"trigger":"after-" //optional, no default
 			,"repetitionInfo":[1,5] //optional, DEFAULT: [1]
-			//the event animation will repeat between index 0 and index 1 times, or just index 0 if there's no index 1 or it's less than index 0
+				//the event animation will repeat between index 0 and index 1 times, or just index 0 if there's no index 1 or it's less than index 0
 			,"animation":[ //mandatory array of animation elements
 				{
 					"sprite":0
@@ -103,7 +106,7 @@ The JSON structure should be as follows:
 
 ## To do
 
-Add events triggers. (not that soon)
+Add more events triggers. (not that soon)
 
 Support more file formats. (webp, jsonc, mp3...)
 
@@ -125,4 +128,4 @@ canBeClicked:false only works on Windows. Or at least it should.
 
 The CHASE_CURSOR behaviour may miss the cursor by less than a pixel, so it starts "bouncing" back and forth to find it.
 
-The CHASE_CURSOR behaviour is unpredictable if you play over the jittai.
+The CHASE_CURSOR behaviour is unpredictable if you play with your pointer over the jittai.
